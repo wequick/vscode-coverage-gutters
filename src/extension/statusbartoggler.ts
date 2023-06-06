@@ -1,8 +1,8 @@
-import { Disposable, StatusBarItem, window } from "vscode";
+import { Disposable, StatusBarItem, ThemeColor, window } from "vscode";
 import { Config } from "./config";
 
 export class StatusBarToggler implements Disposable {
-    private static readonly coverageText = "Coverage";
+    private static readonly coverageText = "Cov";
 
     private static readonly loadingText = ["$(loading~spin)", StatusBarToggler.coverageText].join(" ");
 
@@ -20,6 +20,7 @@ export class StatusBarToggler implements Disposable {
     public lineCoverage: string | undefined;
     private statusBarItem: StatusBarItem;
     private configStore: Config;
+    private isWarn: boolean;
 
     constructor(configStore: Config) {
         this.statusBarItem = window.createStatusBarItem();
@@ -29,6 +30,7 @@ export class StatusBarToggler implements Disposable {
         this.configStore = configStore;
         this.isLoading = false;
         this.lineCoverage = undefined;
+        this.isWarn = false;
 
         if (this.configStore.showStatusBarToggler) { this.statusBarItem.show(); }
     }
@@ -51,9 +53,24 @@ export class StatusBarToggler implements Disposable {
         this.update();
     }
 
-    public setCoverage(linePercentage: number | undefined ) {
+    public setCoverage(linePercentage: number | undefined,
+        totalLinePercentage: number | undefined = undefined,
+        branchPercentage: number | undefined = undefined,
+        totalBranchPercentage: number | undefined = undefined) {
+        this.isWarn = false;
         if (Number.isFinite(linePercentage)) {
-            this.lineCoverage = `${linePercentage}%`;
+            if (Number.isFinite(totalLinePercentage)) {
+                if (Number.isFinite(branchPercentage) && Number.isFinite(totalBranchPercentage)) {
+                    if ((totalLinePercentage||0) < 60 || (totalBranchPercentage||0) < 40) {
+                        this.isWarn = true;
+                    }
+                    this.lineCoverage = `${linePercentage},${branchPercentage}%/${totalLinePercentage},${totalBranchPercentage}%`;
+                } else {
+                    this.lineCoverage = `${linePercentage}%/${totalLinePercentage}%`;
+                }
+            } else {
+                this.lineCoverage = `${linePercentage}%`;
+            }
         } else {
             this.lineCoverage = undefined;
         }
@@ -90,6 +107,13 @@ export class StatusBarToggler implements Disposable {
         } else {
             this.statusBarItem.command = StatusBarToggler.watchCommand;
             this.statusBarItem.tooltip = StatusBarToggler.watchToolTip;
+        }
+
+        const bgColor = (this.isWarn && this.isActive) ? new ThemeColor(
+            "statusBarItem.errorBackground"
+        ) : undefined;
+        if (this.statusBarItem.backgroundColor !== bgColor) {
+            this.statusBarItem.backgroundColor = bgColor;
         }
     }
 }

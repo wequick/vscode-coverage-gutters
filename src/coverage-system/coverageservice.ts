@@ -174,8 +174,27 @@ export class CoverageService {
             const [fileCoverage] = this.sectionFinder.findSectionsForEditor(textEditor, sections);
             const covered = fileCoverage?.lines?.hit;
             const total = fileCoverage?.lines?.found;
+            const b_covered = fileCoverage?.branches?.hit || 0;
+            const b_total = fileCoverage?.branches?.found || 1;
 
-            return this.statusBar.setCoverage(Math.round((covered / total) * 100 ));
+            let total_lines_hit = 0;
+            let total_lines_found = 0;
+            let total_branches_hit = 0;
+            let total_branches_found = 0;
+            sections.forEach( it => {
+                total_lines_hit += it?.lines?.hit;
+                total_lines_found += it?.lines?.found;
+                total_branches_hit += it?.branches?.hit || 0;
+                total_branches_found += it?.branches?.found || 0;
+            });
+            const coverage = Math.round((covered / total) * 100 );
+            const total_coverage = total_lines_found == 0 ? 0 :
+                Math.round((total_lines_hit / total_lines_found) * 100 );
+            const b_coverage = Math.round((b_covered / b_total) * 100 );
+            const b_total_coverage = total_branches_found == 0 ? 0 :
+            Math.round((total_branches_hit / total_branches_found) * 100 );
+
+            return this.statusBar.setCoverage(coverage, total_coverage, b_coverage, b_total_coverage);
         } catch {
             return this.statusBar.setCoverage(undefined);
         }
